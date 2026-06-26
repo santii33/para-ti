@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>Para Ti ❤️</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  width: 100%; height: 100%;
+  background: #000;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0; display: block;
+}
+
+#capa {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.foto {
+  position: absolute;
+  width: clamp(60px, 14vw, 100px);
+  height: clamp(60px, 14vw, 100px);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.18);
+  box-shadow: 0 0 14px rgba(255,60,110,0.55), 0 3px 12px rgba(0,0,0,0.8);
+  animation: volar linear forwards;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.foto img {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+}
+
+.foto-emoji {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(1.4rem, 5vw, 2.4rem);
+  background: radial-gradient(circle at 40% 35%, #300018 0%, #0e0008 100%);
+}
+
+@keyframes volar {
+  0%   { opacity: 0; transform: translateY(0) rotate(var(--r0)) scale(0.72); }
+  8%   { opacity: 1; }
+  87%  { opacity: 0.88; }
+  100% { opacity: 0; transform: translateY(var(--dy)) rotate(var(--r1)) scale(1.06); }
+}
+
+.etiqueta {
+  position: absolute;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-style: italic;
+  font-size: var(--fs, clamp(0.65rem, 2.5vw, 0.9rem));
+  color: rgba(255,255,255,0.82);
+  text-shadow:
+    0 0 8px rgba(255,100,150,0.9),
+    0 0 20px rgba(255,60,110,0.5);
+  animation: floatLabel linear forwards;
+  opacity: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  letter-spacing: 0.04em;
+}
+
+@keyframes floatLabel {
+  0%   { opacity: 0; transform: translateY(0) rotate(var(--r0)); }
+  10%  { opacity: 1; }
+  86%  { opacity: 0.85; }
+  100% { opacity: 0; transform: translateY(var(--dy)) rotate(var(--r1)); }
+}
+
+#centro {
+  position: fixed;
+  top: clamp(32%, 38%, 42%);
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  text-align: center;
+  pointer-events: none;
+  line-height: 1;
+  width: 100%;
+  padding: 0 1rem;
+}
+
+#centro .p1 {
+  display: block;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-style: italic;
+  font-size: clamp(1.5rem, 6vw, 2.5rem);
+  color: rgba(255,210,225,0.92);
+  letter-spacing: clamp(0.2em, 1.5vw, 0.5em);
+  text-shadow:
+    0 0 10px rgba(255,80,130,1),
+    0 0 28px rgba(255,60,110,0.7);
+  animation: pulso 2.6s ease-in-out infinite;
+}
+
+#centro .p2 {
+  display: block;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-style: italic;
+  font-weight: 800;
+  font-size: clamp(2.2rem, 13vw, 5rem);
+  color: #fff;
+  letter-spacing: clamp(0.06em, 2vw, 0.15em);
+  text-shadow:
+    0 0 12px rgba(255,100,150,1),
+    0 0 35px rgba(255,80,130,0.9),
+    0 0 80px rgba(255,50,100,0.55),
+    0 0 140px rgba(255,0,80,0.3);
+  animation: pulso 2.6s ease-in-out infinite;
+}
+
+@keyframes pulso {
+  0%,100% { filter: brightness(1);   opacity: 0.9; }
+  50%     { filter: brightness(1.5); opacity: 1;   }
+}
+</style>
+</head>
+<body>
+
+<canvas id="cvs"></canvas>
+<div id="capa"></div>
+<div id="centro">
+  <span class="p1">TE</span>
+  <span class="p2">AMO</span>
+</div>
+
+<script>
+const cvs  = document.getElementById('cvs');
+const ctx  = cvs.getContext('2d');
+const capa = document.getElementById('capa');
+
+let W, H;
+function resize() {
+  W = cvs.width  = window.innerWidth;
+  H = cvs.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', () => { resize(); rebuildAll(); });
+
+function rnd(a,b){ return a + Math.random()*(b-a); }
+
+let stars = [];
+function buildStars() {
+  const count = Math.min(280, Math.round((W * H) / 3000));
+  stars = Array.from({length: count}, () => ({
+    x: rnd(0,W), y: rnd(0,H),
+    r: rnd(0.15,1.2),
+    a: Math.random(), v: rnd(0.0015,0.007),
+  }));
+}
+buildStars();
+
+function drawStars() {
+  stars.forEach(s => {
+    s.a += s.v;
+    if(s.a>1||s.a<0) s.v*=-1;
+    ctx.beginPath();
+    ctx.arc(s.x,s.y,s.r,0,6.2832);
+    ctx.fillStyle='rgba(255,230,242,'+s.a*0.55+')';
+    ctx.fill();
+  });
+}
+
+let galaxy = [];
+
+function buildGalaxy() {
+  galaxy = [];
+  const cx = W * 0.5;
+  const cy = H * 0.52;
+  const maxR = Math.max(W, H) * 0.85;
+  const brazos = 4;
+  const densidad = Math.min(1, (W * H) / (768 * 1024));
+  const puntosBase = Math.round(380 * densidad);
+
+  for (let b = 0; b < brazos; b++) {
+    const baseAng = (b / brazos) * Math.PI * 2;
+    for (let i = 0; i < puntosBase; i++) {
+      const t   = i / puntosBase;
+      const r   = t * maxR;
+      const ang = baseAng + t * Math.PI * 3.8;
+      const disp = (rnd(-1,1)) * r * 0.22;
+      const px = Math.cos(ang) * r + Math.cos(ang + Math.PI/2) * disp;
+      const py = Math.sin(ang) * r * 0.65 + Math.sin(ang + Math.PI/2) * disp * 0.65;
+      const rr = (220 - t * 100) | 0;
+      const gg = (100 - t * 60)  | 0;
+      const bb = (180 + t * 60)  | 0;
+      galaxy.push({
+        ox: px, oy: py, cx, cy,
+        dist: Math.sqrt(px*px + py*py),
+        angBase: Math.atan2(py, px),
+        velRot: (0.0004 + Math.random()*0.0002) * (1 - t*0.5),
+        r: rnd(0.3, 1.5) * (1 - t*0.35),
+        a: rnd(0.12, 0.65) * (1 - t*0.45),
+        color: rr+','+gg+','+bb,
+        brillo: Math.random() > 0.93,
+        fase: rnd(0, 6.28),
+      });
+    }
+  }
+
+  for (let i = 0; i < Math.round(200 * densidad); i++) {
+    const ang = rnd(0, 6.28);
+    const d   = Math.pow(Math.random(), 1.5) * maxR * 0.12;
+    const px  = Math.cos(ang) * d;
+    const py  = Math.sin(ang) * d * 0.65;
+    galaxy.push({
+      ox: px, oy: py, cx, cy,
+      dist: Math.sqrt(px*px+py*py),
+      angBase: ang,
+      velRot: 0.001,
+      r: rnd(0.6, 2.5),
+      a: rnd(0.3, 0.85),
+      color: '255,200,230',
+      brillo: Math.random() > 0.6,
+      fase: rnd(0, 6.28),
+      nucleo: true,
+    });
+  }
+
+  for (let i = 0; i < Math.round(300 * densidad); i++) {
+    const ang = rnd(0, 6.28);
+    const d   = rnd(0, maxR);
+    const px  = Math.cos(ang) * d;
+    const py  = Math.sin(ang) * d * 0.65;
+    galaxy.push({
+      ox: px, oy: py, cx, cy,
+      dist: d,
+      angBase: ang,
+      velRot: rnd(0.0002, 0.0006),
+      r: rnd(0.15, 0.8),
+      a: rnd(0.04, 0.15),
+      color: '200,130,200',
+      brillo: false,
+      fase: rnd(0, 6.28),
+    });
+  }
+}
+buildGalaxy();
+
+function drawGalaxy(ts) {
+  galaxy.forEach(p => {
+    p.angBase += p.velRot;
+    const nx = p.cx + Math.cos(p.angBase) * p.dist;
+    const ny = p.cy + Math.sin(p.angBase) * p.dist * 0.65;
+    const pulse = p.brillo ? (0.7 + 0.3*Math.sin(ts*0.0008+p.fase)) : 1;
+    const a = p.a * pulse;
+    if (p.brillo) {
+      const sz = p.nucleo ? p.r*5 : p.r*4;
+      const gr = ctx.createRadialGradient(nx,ny,0,nx,ny,sz);
+      gr.addColorStop(0,'rgba(255,180,220,'+a+')');
+      gr.addColorStop(1,'rgba(180,80,180,0)');
+      ctx.beginPath();
+      ctx.arc(nx,ny,sz,0,6.2832);
+      ctx.fillStyle=gr;
+      ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.arc(nx,ny,p.r,0,6.2832);
+    ctx.fillStyle='rgba('+p.color+','+a+')';
+    ctx.fill();
+  });
+}
+
+function hxy(t) {
+  return {
+    x:  16 * Math.pow(Math.sin(t),3),
+    y: -(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))
+  };
+}
+
+let parts = [];
+function buildHeart() {
+  parts = [];
+  const esc = Math.min(W, H) * 0.013;
+  const cx  = W * 0.5;
+  const cy  = H * 0.32;
+
+  for (let i=0; i<600; i++) {
+    const t=rnd(0,6.28), p=hxy(t), n=rnd(-1,1)*esc*0.25;
+    parts.push({
+      tx: cx+p.x*esc+n, ty: cy+p.y*esc+n,
+      x: cx+rnd(-1,1)*W*0.9, y: cy+rnd(-1,1)*H*0.9,
+      r: rnd(0.5,1.8), a: rnd(0.4,0.85),
+      v: rnd(0.01,0.045), fase: rnd(0,6.28),
+      brillo: Math.random()>0.87,
+      g: (60+Math.random()*110)|0, b: (100+Math.random()*130)|0,
+    });
+  }
+  for (let i=0; i<200; i++) {
+    const t=rnd(0,6.28), p=hxy(t), f=rnd(0.1,0.85);
+    parts.push({
+      tx: cx+p.x*esc*f, ty: cy+p.y*esc*f,
+      x: cx+rnd(-1,1)*W*0.8, y: cy+rnd(-1,1)*H*0.8,
+      r: rnd(0.8,2.6), a: rnd(0.06,0.22),
+      v: rnd(0.008,0.03), fase: rnd(0,6.28),
+      brillo: false, g: (80+Math.random()*80)|0, b: (120+Math.random()*100)|0,
+    });
+  }
+  for (let i=0; i<180; i++) {
+    const ang=rnd(0,6.28), p=hxy(ang), n=rnd(-1,1)*esc*0.6;
+    const d=rnd(0.5,1.6)*esc*3;
+    parts.push({
+      tx: cx+p.x*esc+n+Math.cos(ang)*d*0.3,
+      ty: cy+p.y*esc+n+Math.sin(ang)*d*0.2,
+      x: cx+rnd(-1,1)*W, y: cy+rnd(-1,1)*H,
+      r: rnd(0.2,0.9), a: rnd(0.05,0.18),
+      v: rnd(0.005,0.02), fase: rnd(0,6.28),
+      brillo: Math.random()>0.75,
+      g: (120+Math.random()*80)|0, b: (160+Math.random()*90)|0,
+    });
+  }
+}
+buildHeart();
+
+function drawHeart(ts) {
+  parts.forEach(p => {
+    p.x += (p.tx-p.x)*p.v;
+    p.y += (p.ty-p.y)*p.v;
+    const pulse = 0.6+0.4*Math.sin(ts*0.0015+p.fase);
+    const a = p.a*pulse;
+    if (p.brillo) {
+      const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*6);
+      gr.addColorStop(0,'rgba(255,185,215,'+a*0.85+')');
+      gr.addColorStop(1,'rgba(255,50,100,0)');
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r*6,0,6.2832);
+      ctx.fillStyle=gr; ctx.fill();
+    }
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.2832);
+    ctx.fillStyle='rgba(255,'+p.g+','+p.b+','+a+')';
+    ctx.fill();
+  });
+}
+
+function rebuildAll(){ buildStars(); buildGalaxy(); buildHeart(); }
+
+function loop(ts) {
+  ctx.fillStyle='rgba(0,0,0,0.18)';
+  ctx.fillRect(0,0,W,H);
+  drawStars();
+  drawGalaxy(ts);
+  drawHeart(ts);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+const EMOJIS=['❤️','💕','🌹','💋','💝','🌸','💖','🥰','💗','✨','🫶','💘','🌺','💓','💞'];
+const LABELS=['TE AMO','TE ADORO','AMOR','MI ALVERJITA','MI NIÑA','MI TODO','SIEMPRE SERAS TU','MI FLACA','MI OTRA MITAD','MI BLANQUITA','MI COSHITA','LOVE','MI ENCANTO','YOU & ME'];
+
+function zonaAleatoria() {
+  const esMovil = W < 480;
+  const zonas = esMovil ? [
+    {lx:[0.01,0.18], ly:[0.06,0.85]},
+    {lx:[0.78,0.96], ly:[0.06,0.85]},
+    {lx:[0.10,0.85], ly:[0.72,0.92]},
+    {lx:[0.10,0.85], ly:[0.02,0.14]},
+  ] : [
+    {lx:[0.02,0.28], ly:[0.06,0.82]},
+    {lx:[0.70,0.94], ly:[0.06,0.82]},
+    {lx:[0.08,0.88], ly:[0.70,0.93]},
+    {lx:[0.08,0.88], ly:[0.02,0.16]},
+  ];
+  const z = zonas[(Math.random()*zonas.length)|0];
+  return {left: rnd(z.lx[0],z.lx[1])*100, top: rnd(z.ly[0],z.ly[1])*100};
+}
+
+function crearFoto(){
+  const el = document.createElement('div');
+  el.className = 'foto';
+  const pos = zonaAleatoria();
+  el.style.left = pos.left+'vw';
+  el.style.top  = pos.top+'vh';
+  el.style.setProperty('--dy', rnd(-110,110)+'px');
+  el.style.setProperty('--r0', rnd(-20,20)+'deg');
+  el.style.setProperty('--r1', rnd(-20,20)+'deg');
+  el.style.animationDuration = rnd(5,11)+'s';
+  el.style.animationDelay   = rnd(0,1.2)+'s';
+  const d = document.createElement('div');
+  d.className = 'foto-emoji';
+  d.textContent = EMOJIS[(Math.random()*EMOJIS.length)|0];
+  el.appendChild(d);
+  capa.appendChild(el);
+  el.addEventListener('animationend', ()=>el.remove());
+}
+
+function crearLabel(){
+  const el = document.createElement('div');
+  el.className = 'etiqueta';
+  const margenH = W < 480 ? 25 : 5;
+  el.style.left = rnd(margenH, 100-margenH)+'vw';
+  el.style.top  = rnd(5,90)+'vh';
+  const fsMin = W < 480 ? 0.6 : 0.7;
+  const fsMax = W < 480 ? 1.0 : 1.3;
+  el.style.setProperty('--fs', rnd(fsMin,fsMax)+'rem');
+  el.style.setProperty('--dy', rnd(-80,80)+'px');
+  el.style.setProperty('--r0', rnd(-10,10)+'deg');
+  el.style.setProperty('--r1', rnd(-10,10)+'deg');
+  el.style.animationDuration = rnd(5,9)+'s';
+  el.style.animationDelay   = rnd(0,0.8)+'s';
+  el.textContent = LABELS[(Math.random()*LABELS.length)|0];
+  capa.appendChild(el);
+  el.addEventListener('animationend', ()=>el.remove());
+}
+
+for(let i=0; i<9; i++)  setTimeout(crearFoto,  i*200);
+for(let i=0; i<5; i++)  setTimeout(crearLabel, 300+i*320);
+setInterval(crearFoto,  850);
+setInterval(crearLabel, 1350);
+</script>
+</body>
+</html>
